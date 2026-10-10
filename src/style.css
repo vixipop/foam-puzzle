@@ -1,0 +1,387 @@
+:root {
+  --table: #e2e0da;
+  --ink: #5f5a51;
+  --ink-soft: #8f8a7f;
+  --chip: rgba(255, 255, 255, 0.55);
+  --chip-hover: rgba(255, 255, 255, 0.85);
+  --line: rgba(95, 90, 81, 0.16);
+  --bar: rgba(255, 255, 255, 0.32);
+  --focus: #b2ada3;
+  --lift: rgba(60, 50, 30, 0.18);
+  --lift-soft: rgba(60, 50, 30, 0.08);
+  --veil: rgba(226, 224, 218, 0.6);
+  --veil-line: #b9b5ab;
+  --panel: rgba(250, 249, 246, 0.92);
+  --accent: #b58a1b;
+  --gap: max(16px, env(safe-area-inset-left));
+  color-scheme: light;
+}
+
+/* Charcoal, not black: pieces still throw a shadow on it. */
+:root[data-theme="dark"] {
+  --table: #38393d;
+  --ink: #dcdcd8;
+  --ink-soft: #95969b;
+  --chip: rgba(255, 255, 255, 0.08);
+  --chip-hover: rgba(255, 255, 255, 0.15);
+  --line: rgba(255, 255, 255, 0.13);
+  --bar: rgba(255, 255, 255, 0.06);
+  --focus: #8d8e93;
+  --lift: rgba(0, 0, 0, 0.45);
+  --lift-soft: rgba(0, 0, 0, 0.3);
+  --veil: rgba(56, 57, 61, 0.7);
+  --veil-line: #77787d;
+  --panel: rgba(46, 47, 51, 0.94);
+  --accent: #e9c46a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--table);
+  color: var(--ink);
+  font: 450 13px/1.4 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+body.can-grab #scene { cursor: grab; }
+body.grabbing, body.grabbing #scene { cursor: grabbing; }
+
+button, .upload {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Top bar: music and theme (left), pictures (centre), eye and upload (right). */
+.music, .theme, .presets, .actions {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+}
+.actions { right: var(--gap); display: flex; align-items: center; gap: 8px; }
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+  transition: color 200ms ease, background 200ms ease;
+}
+.icon-btn:hover { color: var(--ink); background: var(--chip); }
+.music { left: var(--gap); }
+.theme { left: calc(var(--gap) + 40px); }
+.music svg, .theme svg { width: 20px; height: 20px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.music .wave { fill: none; }
+.theme .moon { display: none; }
+:root[data-theme="dark"] .theme .sun { display: none; }
+:root[data-theme="dark"] .theme .moon { display: block; }
+.music .off { display: none; }
+.music[aria-pressed="false"] .on { display: none; }
+.music[aria-pressed="false"] .off { display: block; }
+
+.presets {
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--bar);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.preset {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-soft);
+  transition: background 200ms ease, color 200ms ease;
+}
+.preset canvas {
+  height: 26px;
+  width: auto;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px var(--lift);
+  display: block;
+}
+.preset:hover { color: var(--ink); background: var(--chip); }
+.preset[aria-pressed="true"] { color: var(--ink); background: var(--chip-hover); box-shadow: 0 1px 3px var(--lift-soft); }
+
+.upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px var(--lift-soft);
+  color: var(--ink);
+  transition: background 200ms ease;
+}
+.upload:hover { background: var(--chip-hover); }
+.upload svg, .peek-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.upload .pic circle { fill: currentColor; stroke: none; }
+
+/* Bottom: hint (centre), scatter (right, always there). */
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  margin: 0;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  transition: opacity 600ms ease, transform 600ms cubic-bezier(.2, .8, .2, 1);
+  pointer-events: none;
+}
+body.ready .hint { opacity: 1; transform: translate(-50%, 0); transition-delay: 500ms; }
+.hint.gone { opacity: 0 !important; transform: translate(-50%, 4px) !important; transition-delay: 0ms !important; }
+
+.scatter {
+  position: fixed;
+  right: var(--gap);
+  bottom: max(18px, env(safe-area-inset-bottom));
+  height: 36px;
+  padding: 0 12px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+  transition: color 200ms ease, background 200ms ease;
+}
+.scatter:hover { color: var(--ink); background: var(--chip); }
+.scatter kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 6px;
+}
+
+body.dropping::after {
+  content: "drop a PNG or JPEG to make a new puzzle";
+  position: fixed;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--veil-line);
+  border-radius: 14px;
+  background: var(--veil);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+/* Narrow screens: pictures drop to their own row, labels hide. */
+@media (max-width: 720px) {
+  .presets { top: max(58px, calc(env(safe-area-inset-top) + 44px)); }
+  .preset span { display: none; }
+  .preset { padding: 4px; }
+  .upload .label, .peek-btn .label { display: none; }
+  .peek-btn { width: 36px; padding: 0; }
+  .upload { padding: 0 9px; }
+}
+@media (hover: none) { .scatter kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+
+/* ─── The icon on "Use your own image": a lock until unlocked, then the picture ─── */
+.upload .slot { position: relative; width: 18px; height: 18px; flex: none; }
+.upload .slot svg { position: absolute; inset: 0; transition: opacity 200ms ease, transform 260ms cubic-bezier(.2, .8, .2, 1); }
+.upload .lock { stroke-width: 1.7; color: var(--ink-soft); }
+.upload .lock rect { fill: color-mix(in srgb, currentColor 14%, transparent); }
+/* unlocked: the lock shrinks away, then the picture pops in */
+.upload .lock { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+.upload .pic { opacity: 1; transition-delay: 140ms; }
+body.is-locked .upload .lock { opacity: 1; transform: none; }
+body.is-locked .upload .pic { opacity: 0; transform: scale(0.4); transition-delay: 0s; }
+body.is-locked .upload { cursor: pointer; }
+
+/* ─── The eye: peek at the finished picture ─── */
+.peek-btn {
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px var(--lift-soft);
+  color: var(--ink);
+}
+.peek-btn { width: auto; grid-auto-flow: column; gap: 7px; padding: 0 14px 0 11px; font: inherit; font-size: 13px; cursor: pointer; }
+.peek-btn:hover { background: var(--chip-hover); }
+
+.peek {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px var(--gap);
+  background: color-mix(in srgb, var(--table) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.peek[hidden] { display: none; }
+.peek.is-open { opacity: 1; }
+.peek canvas {
+  display: block;
+  width: min(92vw, 980px);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px var(--lift), 0 0 0 1px var(--line);
+  transform: scale(0.97);
+  transition: transform 260ms cubic-bezier(.2, .8, .2, 1);
+}
+.peek.is-open canvas { transform: none; }
+.peek-note { margin: 0; color: var(--ink-soft); font-size: 12.5px; }
+
+/* ─── The paid-feature popup, bottom right above "scatter" ───────────── */
+.unlock {
+  position: fixed;
+  right: var(--gap);
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 48px);
+  width: 288px;
+  max-width: calc(100vw - 32px);
+  padding: 16px 16px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line), 0 10px 30px var(--lift);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transform-origin: bottom right;
+  transition: opacity 200ms ease, transform 220ms cubic-bezier(.2, .8, .2, 1);
+  z-index: 5;
+}
+.unlock[hidden], .unlock [hidden] { display: none !important; }
+.unlock.is-open { opacity: 1; transform: none; }
+
+.unlock-title { margin: 0 22px 12px 0; font-size: 13px; line-height: 20px; }
+.reveal {
+  display: inline-block;
+  padding: 0 6px;
+  margin-left: 2px;
+  border-radius: 6px;
+  background: var(--chip);
+  color: var(--ink);
+  font: 600 12.5px/20px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  cursor: help;
+  filter: blur(5px);
+  transition: filter 320ms ease;
+  outline: none;
+}
+.reveal.is-revealed, .reveal:hover, .reveal:focus-visible { filter: none; }
+.reveal b { font-weight: 700; letter-spacing: 0.08em; }
+
+.unlock-form { display: flex; gap: 8px; }
+.unlock-form input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 600 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-transform: uppercase;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.unlock-form input::placeholder { color: var(--ink-soft); opacity: 0.6; }
+.unlock-form input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.unlock-form button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--table);
+  font-weight: 600;
+  transition: opacity 200ms ease;
+}
+.unlock-form button:hover { opacity: 0.85; }
+.unlock-form.shake { animation: shake 360ms ease; }
+@keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.unlock-note { margin: 8px 0 0; min-height: 18px; color: var(--ink-soft); font-size: 12px; }
+.unlock-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+}
+.unlock-close:hover { background: var(--chip); color: var(--ink); }
+.unlock-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+/* the win: a line of text and a burst of stars */
+.unlock-win { margin: 6px 0; text-align: center; font-size: 15px; font-weight: 600; color: var(--accent); }
+.unlock.is-won { padding-block: 22px; }
+.unlock.is-won .unlock-close { display: none; }
+.sparks { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.sparks i {
+  position: absolute;
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0;
+  animation: spark 1.3s var(--d) cubic-bezier(.2, .7, .3, 1) forwards;
+}
+@keyframes spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(0) rotate(0); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(var(--s)) rotate(var(--r)); }
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .unlock, .reveal, .peek, .peek canvas, .upload .slot svg { transition: none; }
+  .unlock-form.shake { animation: none; }
+}
