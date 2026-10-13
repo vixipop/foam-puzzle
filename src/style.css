@@ -215,6 +215,12 @@ body.dropping::after {
   .upload { padding: 0 12px 0 10px; }
 }
 @media (hover: none) { .scatter kbd { display: none; } }
+/* Phones: the host's corner badge sits along the bottom, so everything there rises above it. */
+@media (max-width: 720px) {
+  .hint, .clock { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 52px); }
+  .share { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 112px); }
+  .scatter { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 158px); }
+}
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
 
 /* ─── The icon on "Use your own image" ─── */
@@ -292,6 +298,7 @@ body.dropping::after {
   animation: share-in 420ms cubic-bezier(.2, .8, .2, 1) 600ms backwards;
 }
 .share button {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -332,3 +339,7 @@ body.dropping::after {
 }
 @media (hover: none), (max-width: 720px) { .boot { display: grid; } }
 .boot.gone { opacity: 0; pointer-events: none; }
+
+/* ?tune: a slider for the table grain. */
+.tune { position: fixed; left: var(--gap); top: 64px; z-index: 6; display: flex; gap: 8px; align-items: center; color: var(--ink-soft); font-size: 12px; }
+.tune input { width: 140px; }

@@ -93,6 +93,16 @@ const table = new THREE.Mesh(
 );
 table.rotation.x = -Math.PI / 2;
 scene.add(table);
+// Grain strength per theme (0 = none), adjustable with the ?tune slider.
+const GRAIN_DEFAULT = { light: 0.8, dark: 0.3 };
+const grainKey = (name) => `foam-grain-${name}`;
+function grainLevel(name) {
+  try {
+    const v = parseFloat(localStorage.getItem(grainKey(name)));
+    if (Number.isFinite(v)) return v;
+  } catch {}
+  return GRAIN_DEFAULT[name];
+}
 const grainMat = new THREE.MeshBasicMaterial({
   map: null,
   transparent: true,
@@ -341,7 +351,7 @@ function applyTheme(name) {
   grainMat.map?.dispose();
   grainMat.map = grainTexture(name === 'dark');
   grainMat.needsUpdate = true;
-  grainMat.opacity = name === 'dark' ? 0.9 : 0.8;
+  grainMat.opacity = grainLevel(name);
   table.material.map.dispose();
   table.material.map = tableTexture(t.table.center, t.table.edge);
   table.material.needsUpdate = true;
@@ -354,6 +364,28 @@ function applyTheme(name) {
   }
   if (zone.mesh) buildZone();
   wake();
+}
+if (new URLSearchParams(location.search).has('tune')) {
+  // Open the page with ?tune for a slider that sets the table grain live.
+  const box = document.createElement('label');
+  box.className = 'tune';
+  box.textContent = 'grain ';
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = 0;
+  range.max = 1.5;
+  range.step = 0.05;
+  range.value = grainLevel(theme);
+  range.addEventListener('input', () => {
+    grainMat.opacity = parseFloat(range.value);
+    try {
+      localStorage.setItem(grainKey(theme), range.value);
+    } catch {}
+    wake();
+  });
+  themeButton.addEventListener('click', () => setTimeout(() => (range.value = grainLevel(theme))));
+  box.append(range);
+  document.body.append(box);
 }
 themeButton.addEventListener('click', () => {
   const next = theme === 'dark' ? 'light' : 'dark';
@@ -1124,7 +1156,7 @@ showMusic();
 // ─── Words and keys ──────────────────────────────────────────────────────
 function setDone(done) {
   if (done) {
-    hint.textContent = 'solved · R scatters it again';
+    hint.textContent = matchMedia('(hover: none)').matches ? 'solved · scatter to go again' : 'solved · R scatters it again';
     hint.classList.remove('gone');
     shareBar.hidden = false;
   } else {
@@ -1171,12 +1203,27 @@ function boardRect(w, h) {
 function captureCard() {
   return new Promise((resolve) => {
     grabFrame = () => {
+      // The screen is often small (a phone), so draw the card's frame again
+      // at higher resolution, then put the screen back how it was.
       const src = renderer.domElement;
+      const ratio = renderer.getPixelRatio();
+      const cssWidth = boardRect(src.width, src.height).w / ratio;
+      const big = THREE.MathUtils.clamp(1300 / cssWidth, ratio, Math.min(4, 4096 / Math.max(window.innerWidth, window.innerHeight)));
+      const redraw = () => {
+        sparkles.update(0, renderer.getDrawingBufferSize(bufSize).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)));
+        soften.render(scene, camera);
+      };
+      renderer.setPixelRatio(big);
+      soften.resize();
+      redraw();
       const shot = document.createElement('canvas');
       shot.width = src.width;
       shot.height = src.height;
       shot.getContext('2d').drawImage(src, 0, 0);
       cardShot = { shot, rect: boardRect(src.width, src.height), name: picture.name, time: clock.ms };
+      renderer.setPixelRatio(ratio);
+      soften.resize();
+      redraw();
       resolve(cardShot);
     };
     wake();
