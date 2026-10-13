@@ -1220,7 +1220,7 @@ function boardRect(w, h) {
       }
     }
   }
-  const m = Math.max(x1 - x0, y1 - y0) * 0.07;
+  const m = Math.max(x1 - x0, y1 - y0) * 0.04;
   return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
 }
 
@@ -1231,22 +1231,19 @@ function captureCard() {
       // at higher resolution, then put the screen back how it was.
       const src = renderer.domElement;
       const ratio = renderer.getPixelRatio();
-      const cssWidth = boardRect(src.width, src.height).w / ratio;
-      const big = THREE.MathUtils.clamp(1300 / cssWidth, ratio, Math.min(4, 4096 / Math.max(window.innerWidth, window.innerHeight)));
+      // Only as sharp as the card needs: the puzzle ends up at most 1200 px
+      // wide (and 544 px tall) on it, with a little to spare.
+      const r = boardRect(src.width, src.height);
+      const onCard = Math.min(1200, (544 * r.w) / r.h) * 1.25;
+      const big = THREE.MathUtils.clamp(onCard / (r.w / ratio), ratio, Math.min(3, 4096 / Math.max(window.innerWidth, window.innerHeight)));
       const redraw = () => {
         sparkles.update(0, renderer.getDrawingBufferSize(bufSize).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)));
         soften.render(scene, camera);
       };
-      // Settle the foam and swap the live sparkles for a tidy ring round the puzzle.
+      // Settle the foam and hide the live sparkles.
       for (const p of pieces) p.squash = p.squashV = 0;
       clusters.forEach(apply);
-      const p0 = pieces[0];
-      const before = sparkles.pose(
-        p0.cluster.pos.x + p0.offset.x - p0.layout.x,
-        p0.cluster.pos.y + p0.offset.z - p0.layout.z,
-        board.w,
-        board.d
-      );
+      const before = sparkles.pose(0, 0, 1, 1, 0); // no sparkles on the card
       renderer.setPixelRatio(big);
       soften.resize();
       redraw();
