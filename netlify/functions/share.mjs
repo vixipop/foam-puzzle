@@ -53,7 +53,7 @@ export async function handle(req, store, ip = 'unknown') {
     return new Response(entry.data, { headers: { 'content-type': meta.type, 'cache-control': 'public, max-age=86400' } });
   }
 
-  // The link people open: a preview for X, then on to the puzzle.
+  // The link people open: a preview for X, then on to the puzzle (by script, so crawlers stay on this page and read the card).
   if (path.startsWith('/s/')) {
     const title = `${meta.name}${meta.time ? ` · finished in ${meta.time}` : ''}`;
     const image = `${url.origin}/i/${id}.${meta.type === 'image/png' ? 'png' : 'jpg'}`;
@@ -64,7 +64,8 @@ export async function handle(req, store, ip = 'unknown') {
 <meta property="og:image" content="${esc(image)}"><meta property="og:url" content="${esc(url.href)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:image" content="${esc(image)}">
-<meta http-equiv="refresh" content="0; url=/"></head><body><a href="/">Play jigglesaw</a></body></html>`;
+</head><body><p><a href="/">Play jigglesaw</a></p>
+<script>location.replace("/")</script><noscript><meta http-equiv="refresh" content="0; url=/"></noscript></body></html>`;
     return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
   }
   return new Response('not found', { status: 404 });
