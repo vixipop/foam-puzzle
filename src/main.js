@@ -60,10 +60,11 @@ const native = window.devicePixelRatio || 1;
 const maxDpr = native < 1.5 ? 1.5 : Math.min(native, 2);
 renderer.setPixelRatio(maxDpr);
 const soften = createSoften(renderer);
+// Phones keep at least 1.5× so the pieces stay crisp.
 const quality = createQualityGuard(maxDpr, (ratio) => {
   renderer.setPixelRatio(ratio);
   soften.resize();
-});
+}, matchMedia('(hover: none)').matches ? Math.min(1.5, maxDpr) : 1);
 
 const scene = new THREE.Scene();
 let theme = savedTheme();
@@ -93,7 +94,7 @@ const table = new THREE.Mesh(
 table.rotation.x = -Math.PI / 2;
 scene.add(table);
 const grainMat = new THREE.MeshBasicMaterial({
-  map: grainTexture(),
+  map: null,
   transparent: true,
   depthWrite: false,
   toneMapped: false,
@@ -337,7 +338,10 @@ function applyTheme(name) {
   themeButton.setAttribute('aria-label', name === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
 
   scene.background.set(t.table.edge);
-  grainMat.opacity = name === 'dark' ? 0.55 : 0.8;
+  grainMat.map?.dispose();
+  grainMat.map = grainTexture(name === 'dark');
+  grainMat.needsUpdate = true;
+  grainMat.opacity = name === 'dark' ? 0.9 : 0.8;
   table.material.map.dispose();
   table.material.map = tableTexture(t.table.center, t.table.edge);
   table.material.needsUpdate = true;
@@ -448,11 +452,22 @@ function show(pic) {
 const area = { w: 8, d: 6 };
 const corner = new THREE.Vector3();
 
+const PORTRAIT_GAP = 1.2; // spacing between loose pieces on a phone held upright
+const isPortrait = () => camera.aspect < 0.8;
+
 function fitCamera() {
   const total = zone.w * zone.d + pieces.length * SPREAD;
   const a = THREE.MathUtils.clamp(camera.aspect * 1.05, 0.75, 2.2);
   area.w = Math.max(Math.sqrt(total * a), zone.w + 2 * RING);
   area.d = Math.max(total / area.w, zone.d + 2 * RING);
+  if (isPortrait()) {
+    // A tall, narrow screen: the puzzle area takes the full width and the
+    // loose pieces lie in rows above and below it, half each.
+    const perRow = Math.max(2, Math.floor((zone.w + 0.4) / PORTRAIT_GAP));
+    const rows = Math.ceil(pieces.length / 2 / perRow);
+    area.w = zone.w + 0.5;
+    area.d = zone.d + 2 * (rows * PORTRAIT_GAP + 0.5);
+  }
 
   const fits = (dist) => {
     camera.position.set(0, Math.sin(ELEV) * dist, Math.cos(ELEV) * dist);
@@ -552,9 +567,12 @@ function resize() {
 function slots(n) {
   const probe = { foot: { x0: -reach, x1: reach, z0: -reach, z1: reach } };
   const v = new THREE.Vector2();
-  const outsideZone = (x, z) => Math.abs(x) > zone.w / 2 + RING * 0.75 || Math.abs(z - zone.z) > zone.d / 2 + RING * 0.75;
+  const portrait = isPortrait();
+  const outsideZone = portrait
+    ? (_x, z) => Math.abs(z - zone.z) > zone.d / 2 + 0.55 // only above and below
+    : (x, z) => Math.abs(x) > zone.w / 2 + RING * 0.75 || Math.abs(z - zone.z) > zone.d / 2 + RING * 0.75;
   let best = [];
-  for (let gap = 1.6; gap >= 1.15; gap -= 0.05) {
+  for (let gap = portrait ? 1.3 : 1.6; gap >= 1.1; gap -= 0.05) {
     const out = [];
     for (let tries = 0; tries < 6000 && out.length < n; tries++) {
       v.set((Math.random() - 0.5) * area.w * 1.3, (Math.random() - 0.5) * area.d * 1.3);
@@ -984,6 +1002,9 @@ function frame(now) {
   const elapsed = now - last;
   const dt = Math.min(elapsed / 1000, 1 / 30);
   last = now;
+  // Resizing the drawing buffer clears it, so any pixel-ratio change has to
+  // happen before this frame is drawn, not after (the loop may sleep next).
+  quality(elapsed);
   // Fixed substeps keep the springs stable on 30Hz and 144Hz alike.
   const n = Math.max(1, Math.ceil(dt / (1 / 240)));
   for (let i = 0; i < n; i++) {
@@ -1000,7 +1021,6 @@ function frame(now) {
     grabFrame();
     grabFrame = null;
   }
-  quality(elapsed);
 
   if (held || sparkling || solvedAt !== null || !clusters.every(settled)) requestAnimationFrame(frame);
   else running = false;
@@ -1269,8 +1289,12 @@ countVisit();
     presetPictures.add(pic);
     show(pic);
     markTab(pic);
+    document.getElementById('boot').classList.add('gone');
     return;
   }
+  document.getElementById('boot').classList.add('gone');
+  hint.textContent = "couldn't load the pictures · upload your own";
+  hint.classList.remove('gone');
 })();
 document.fonts?.ready.then(() => document.body.classList.add('ready'));
 setTimeout(() => document.body.classList.add('ready'), 400);

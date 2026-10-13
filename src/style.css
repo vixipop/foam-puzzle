@@ -19,7 +19,7 @@
 
 /* Charcoal, not black: pieces still throw a shadow on it. */
 :root[data-theme="dark"] {
-  --table: #38393d;
+  --table: #28292c;
   --ink: #dcdcd8;
   --ink-soft: #95969b;
   --chip: rgba(255, 255, 255, 0.08);
@@ -172,7 +172,7 @@ body.ready .hint { opacity: 1; transform: translate(-50%, 0); transition-delay: 
 .scatter {
   position: fixed;
   right: var(--gap);
-  bottom: max(18px, env(safe-area-inset-bottom));
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 52px); /* clear of the host's corner badge */
   height: 36px;
   padding: 0 12px 0 14px;
   border: 0;
@@ -210,9 +210,9 @@ body.dropping::after {
   .presets { top: max(58px, calc(env(safe-area-inset-top) + 44px)); }
   .preset span { display: none; }
   .preset { padding: 4px; }
-  .upload .label, .peek-btn .label { display: none; }
+  .peek-btn .label { display: none; }
   .peek-btn { width: 36px; padding: 0; }
-  .upload { padding: 0 9px; }
+  .upload { padding: 0 12px 0 10px; }
 }
 @media (hover: none) { .scatter kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
@@ -314,3 +314,21 @@ body.dropping::after {
 /* Tabs made from uploads. */
 .preset span { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { body.has-uploads .preset span { display: none; } body.has-uploads .preset { padding: 4px; } }
+@media (max-width: 1060px) { .preset span { display: none; } .preset { padding: 4px; } }
+
+/* Shown on phones until the puzzle is ready. */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background: var(--table);
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-align: center;
+  transition: opacity 400ms ease;
+}
+@media (hover: none), (max-width: 720px) { .boot { display: grid; } }
+.boot.gone { opacity: 0; pointer-events: none; }

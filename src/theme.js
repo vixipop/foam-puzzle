@@ -8,10 +8,10 @@ export const THEMES = {
     browser: '#e2e0da', // phone address-bar colour
   },
   dark: {
-    table: { center: '#4a4b4f', edge: '#38393d' },
+    table: { center: '#38393d', edge: '#28292c' },
     shadow: '#0b0b0d',
     dots: 'rgba(214, 214, 220, 0.30)',
-    browser: '#38393d',
+    browser: '#28292c',
   },
 };
 

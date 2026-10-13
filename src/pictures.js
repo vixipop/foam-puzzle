@@ -50,10 +50,16 @@ async function pictureFromVideo(url, name, { still: at = 0, crop = 0 } = {}) {
   v.playsInline = true;
   v.preload = 'auto';
   v.src = url;
+  // Phones won't fetch a video's frames until it's asked to play, so start it
+  // (muted, inline: allowed) and stop it again once the first frame is in.
   await new Promise((resolve, reject) => {
-    v.addEventListener('loadeddata', resolve, { once: true });
-    v.addEventListener('error', () => reject(new Error(`can't play ${name}`)), { once: true });
+    const give = setTimeout(() => reject(new Error(`${name} took too long`)), 15000);
+    v.addEventListener('loadeddata', () => (clearTimeout(give), resolve()), { once: true });
+    v.addEventListener('error', () => (clearTimeout(give), reject(new Error(`can't play ${name}`))), { once: true });
+    v.load();
+    v.play().catch(() => {});
   });
+  v.pause();
   await seek(v, at);
 
   const sw = v.videoWidth - crop * 2;
@@ -101,6 +107,7 @@ function cover(ctx, img, w, h) {
 function seek(v, time) {
   return new Promise((resolve) => {
     if (Math.abs(v.currentTime - time) < 0.001) return resolve();
+    setTimeout(resolve, 3000); // never wait forever on a slow phone
     v.addEventListener('seeked', resolve, { once: true });
     v.currentTime = time;
   });
