@@ -1280,7 +1280,8 @@ function say(text, ms = 4000) {
 document.getElementById('share-x').addEventListener('click', async () => {
   const c = cardShot || (await captureCard());
   const result = await shareToX(await cardCanvas(), c.name, c.time);
-  if (result === 'pasted') say('image copied · press Ctrl+V (⌘V on Mac) in the X post', 20000);
+  if (result === 'linked') say(presetPictures.has(picture) && !uploadTabs.some((t) => t.pic === picture) ? 'X is open · your card shows up as the picture' : 'X is open · your card is a public link, anyone with it can see it', 12000);
+  else if (result === 'pasted') say('image copied · press Ctrl+V (⌘V on Mac) in the X post', 20000);
   else if (result === 'opened') say('X is open · paste the image (Ctrl+V) or attach the saved one', 20000);
   else if (result === 'blocked') say('allow pop-ups to open X');
 });

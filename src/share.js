@@ -65,25 +65,32 @@ export async function savePng(cv, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
-// X can't take an image through a link, so: on phones the share sheet carries
-// the picture; elsewhere the picture goes on the clipboard and X opens with the
-// caption ready, for you to paste. Returns what happened, for the hint.
+// X can't take an image through a link, but it will show a preview card for
+// one. So: save the card (the /api/share function, see netlify/functions),
+// and open X with the caption and the card's own link. If saving fails
+// (offline, or running locally), fall back to copying the image to paste.
+// Returns what happened, for the hint.
 export async function shareToX(cv, name, time) {
   const text = `finished the ${name} jigglesaw in ${formatTime(time)} 🧩 ${HANDLE}`;
-  const url = location.origin + location.pathname;
-  if (matchMedia('(hover: none)').matches && navigator.canShare) {
-    const file = new File([await toBlob(cv)], 'jigglesaw.png', { type: 'image/png' });
-    if (navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], text: `${text} ${url}` });
-        return 'shared';
-      } catch {
-        return 'cancelled';
-      }
-    }
-  }
-  const win = window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener');
-  const copied = await copyImage(cv);
+  const intent = (link) => `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`;
+  const home = location.origin + location.pathname;
+  // Open the tab now, inside the click, so pop-up blockers allow it.
+  const win = window.open('', '_blank');
   if (!win) return 'blocked';
-  return copied ? 'pasted' : 'opened';
+  try {
+    const jpeg = await new Promise((resolve) => cv.toBlob(resolve, 'image/jpeg', 0.9));
+    const res = await fetch(`/api/share?name=${encodeURIComponent(name)}&time=${encodeURIComponent(formatTime(time))}`, {
+      method: 'POST',
+      headers: { 'content-type': 'image/jpeg' },
+      body: jpeg,
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    const { url } = await res.json();
+    win.location = intent(url);
+    return 'linked';
+  } catch {
+    const copied = await copyImage(cv);
+    win.location = intent(home);
+    return copied ? 'pasted' : 'opened';
+  }
 }
