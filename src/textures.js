@@ -50,7 +50,6 @@ export function tableTexture(center, edge) {
   g.addColorStop(1, edge);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
-  grain(ctx, s, s, 5);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -147,5 +146,25 @@ export function targetTexture(w, d, colour, strength = 0.28) {
   ctx.fill();
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Fine film grain, tiled over the table. One tile texel is about a screen
+// pixel, so it reads as grain rather than clumps.
+export function grainTexture() {
+  const s = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const ctx = cv.getContext('2d');
+  const img = ctx.createImageData(s, s);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = Math.random() - 0.5;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = n > 0 ? 255 : 0;
+    img.data[i + 3] = Math.abs(n) * 46;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(30, 30);
   return tex;
 }

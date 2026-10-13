@@ -6,9 +6,10 @@ import { Cluster } from './cluster.js';
 import { createQualityGuard } from './quality.js';
 import { THEMES, savedTheme, saveTheme } from './theme.js';
 import { foamMaterial, printMaterial } from './materials.js';
-import { printTexture, tableTexture, shadowTexture, dottedFrameTexture, targetTexture } from './textures.js';
+import { printTexture, tableTexture, grainTexture, shadowTexture, dottedFrameTexture, targetTexture } from './textures.js';
 import { PRESETS, loadPreset, pictureFromImage } from './pictures.js';
 import { countSolve, countVisit } from './stats.js';
+import { buildCard, copyImage, formatTime, savePng, shareToX } from './share.js';
 import { createSparkles } from './sparkles.js';
 import { createSoften } from './soften.js';
 import { wakeAudio, soundLift, soundLand, soundSnap, soundDone, startMusic, stopMusic } from './audio.js';
@@ -38,6 +39,8 @@ const LIGHT = new THREE.Vector3(-2.4, 6, 2.2); // key light; shadows fall away f
 // ─── Renderer, scene, camera ─────────────────────────────────────────────
 const canvas = document.getElementById('scene');
 const hint = document.getElementById('hint');
+const clockEl = document.getElementById('clock');
+const shareBar = document.getElementById('share');
 const fileInput = document.getElementById('file');
 const musicButton = document.getElementById('music');
 const themeButton = document.getElementById('theme');
@@ -89,6 +92,19 @@ const table = new THREE.Mesh(
 );
 table.rotation.x = -Math.PI / 2;
 scene.add(table);
+const grainMat = new THREE.MeshBasicMaterial({
+  map: grainTexture(),
+  transparent: true,
+  depthWrite: false,
+  toneMapped: false,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -1,
+});
+const grain = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), grainMat);
+grain.rotation.x = -Math.PI / 2;
+grain.position.y = 0.0002;
+scene.add(grain);
 
 // ─── The board ───────────────────────────────────────────────────────────
 // The current puzzle's grid: columns, rows, cell size and overall size.
@@ -96,7 +112,26 @@ const board = { cols: 6, rows: 4, cw: 1, ch: 1, w: 6, d: 4 };
 
 let print = printTexture(renderer, 1.5);
 let picture = null;
-let solvedAt = null; // performance.now() when the last piece went in
+let solvedAt = null;
+// How long this puzzle has taken: runs from the first piece picked up until
+// it's solved; paused while another picture is showing.
+let clock = { ms: 0, since: null, done: false };
+let cardShot = null; // the solved frame, for the share card
+let grabFrame = null;
+const clockMs = () => clock.ms + (clock.since === null ? 0 : performance.now() - clock.since);
+function showClock() {
+  clockEl.hidden = clock.ms === 0 && clock.since === null;
+  clockEl.textContent = formatTime(clockMs());
+  clockEl.classList.toggle('done', clock.done);
+}
+setInterval(() => clock.since !== null && showClock(), 250);
+function resetClock() {
+  clock = { ms: 0, since: null, done: false };
+  cardShot = null;
+  grabFrame = null;
+  shareBar.hidden = true;
+  showClock();
+} // performance.now() when the last piece went in
 const sparkles = createSparkles(scene);
 const topMat = printMaterial(print);
 const sideMat = foamMaterial({ top: HEIGHT, cardT: CARD_T, backT: BACK_T, print, sheet: new THREE.Vector2(6, 4), pad: 0 });
@@ -227,8 +262,11 @@ function buildZone() {
   // the padding looks even all round.
   const lean = HEIGHT / Math.tan(ELEV);
   zone.w = board.w + ZONE_PAD * 2;
-  zone.d = board.d + ZONE_PAD * 2 + lean;
-  zone.z = -lean / 2;
+  // A touch more room on the near side: the far side already reads roomier
+  // because the board's top face sits higher than its footprint.
+  const near = 0.16;
+  zone.d = board.d + ZONE_PAD * 2 + lean + near;
+  zone.z = (near - lean) / 2;
   const pad = 0.1;
   const tex = dottedFrameTexture(zone.w, zone.d, pad, THEMES[theme].dots);
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -253,6 +291,7 @@ function buildZone() {
 function buildPuzzle(pic) {
   picture = pic;
   solvedAt = null;
+  resetClock();
   sparkles.clear();
   Object.assign(board, gridFor(pic.aspect, PIECES));
   board.w = board.cols * board.cw;
@@ -298,6 +337,7 @@ function applyTheme(name) {
   themeButton.setAttribute('aria-label', name === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
 
   scene.background.set(t.table.edge);
+  grainMat.opacity = name === 'dark' ? 0.55 : 0.8;
   table.material.map.dispose();
   table.material.map = tableTexture(t.table.center, t.table.edge);
   table.material.needsUpdate = true;
@@ -355,6 +395,8 @@ function park() {
     shadowPlane,
     shadowSize,
     solvedFor: solvedAt === null ? null : performance.now() - solvedAt,
+    clock: { ms: clockMs(), since: null, done: clock.done },
+    cardShot,
   };
   if (presetPictures.has(picture)) parked.set(picture, keep);
   else discard(keep);
@@ -384,6 +426,10 @@ function show(pic) {
   sideMat.userData.uniforms.uPrint.value = print;
   sideMat.userData.uniforms.uSheet.value.set(board.w, board.d);
   solvedAt = k.solvedFor === null ? null : performance.now() - k.solvedFor;
+  clock = k.clock;
+  cardShot = k.cardShot;
+  grabFrame = null;
+  showClock();
   buildZone();
   fitCamera();
   clusters.forEach((cl) => {
@@ -554,6 +600,7 @@ function scatter(pop = false) {
   hovered = null;
   document.body.classList.remove('grabbing', 'can-grab');
   solvedAt = null;
+  resetClock();
   sparkles.clear();
   print.userData.paint(picture, 0);
   setDone(false);
@@ -644,7 +691,13 @@ function seat(cl, fit) {
     sparkles.burst(into.pos.x, into.pos.y, board.w, board.d);
     // Animated pictures come alive; stills stay still.
     if (picture.animated) solvedAt = performance.now();
+    clock.ms = clockMs();
+    clock.since = null;
+    clock.done = true;
+    showClock();
     setDone(true);
+    const solvedPicture = picture;
+    setTimeout(() => picture === solvedPicture && clock.done && captureCard(), 900); // sparkles at their best
     countSolve(presetPictures.has(picture) ? picture.name : 'your own image');
   }
   unpile(); // anything loose it landed on slides out from under it
@@ -705,6 +758,10 @@ canvas.addEventListener('pointerdown', (e) => {
   soundLift();
   document.body.classList.add('grabbing');
   hint.classList.add('gone');
+  if (clock.since === null && !clock.done) {
+    clock.since = performance.now();
+    showClock();
+  }
   wake();
 });
 
@@ -821,6 +878,8 @@ function step(cl, dt) {
       });
     }
     [p.squash, p.squashV] = spring(p.squash, p.squashV, 0, 520, 0.32, dt);
+    // Kicks can pile up (a long chain of joins at once); keep the squish a squish.
+    p.squashV = THREE.MathUtils.clamp(p.squashV, -6, 6);
   }
 
   // Seat it.
@@ -883,7 +942,7 @@ function apply(cl) {
   const sz = (-LIGHT.z / LIGHT.y) * h;
   const contact = 1 - THREE.MathUtils.smoothstep(cl.lift, 0, 0.06);
   for (const p of cl.pieces) {
-    const s = p.squash;
+    const s = THREE.MathUtils.clamp(p.squash, -0.4, 0.3);
     p.mesh.scale.set(1 - s * 0.3, 1 + s, 1 - s * 0.3);
     p.soft.position.set(p.offset.x + sx, 0.002, p.offset.z + sz);
     p.soft.scale.setScalar(1.02 + cl.lift * 0.3);
@@ -937,6 +996,10 @@ function frame(now) {
   if (solvedAt !== null) print.userData.paint(picture, (now - solvedAt) / 1000);
   const sparkling = sparkles.update(dt, renderer.getDrawingBufferSize(bufSize).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)));
   soften.render(scene, camera);
+  if (grabFrame) {
+    grabFrame();
+    grabFrame = null;
+  }
   quality(elapsed);
 
   if (held || sparkling || solvedAt !== null || !clusters.every(settled)) requestAnimationFrame(frame);
@@ -954,10 +1017,12 @@ async function useImage(file) {
     hint.classList.remove('gone');
     return;
   }
-  const pic = await pictureFromImage(file).catch(() => null);
+  const pic = await pictureFromImage(file, file.name.replace(/\.[^.]+$/, '') || 'your image').catch(() => null);
   if (!pic) return;
+  presetPictures.add(pic); // its puzzle is kept while you look at other tabs
+  addUploadTab(pic);
   show(pic);
-  markPreset(-1);
+  markTab(pic);
 }
 fileInput.addEventListener('change', () => {
   useImage(fileInput.files[0]);
@@ -1041,41 +1106,146 @@ function setDone(done) {
   if (done) {
     hint.textContent = 'solved · R scatters it again';
     hint.classList.remove('gone');
+    shareBar.hidden = false;
   } else {
+    shareBar.hidden = true;
     hint.textContent = `${pieces.length} pieces · build it inside the dots`;
   }
 }
 scatterButton.addEventListener('click', () => scatter(true));
 
-// Three pictures to choose from, each with a thumbnail painted from itself.
-PRESETS.forEach((entry, i) => {
+// ─── Share ───────────────────────────────────────────────────────────────
+// A snapshot of the solved board, cropped to the puzzle with a margin for the
+// sparkles, taken from the next frame drawn.
+function boardRect(w, h) {
+  // Where the finished puzzle actually sits: it can be put together anywhere.
+  const p0 = pieces[0];
+  const sx = p0.cluster.pos.x + p0.offset.x - p0.layout.x;
+  const sz = p0.cluster.pos.y + p0.offset.z - p0.layout.z;
+  const box = new THREE.Box3(
+    new THREE.Vector3(sx - board.w / 2, 0, sz - board.d / 2),
+    new THREE.Vector3(sx + board.w / 2, HEIGHT, sz + board.d / 2)
+  );
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [0, HEIGHT]) {
+      for (const z of [box.min.z, box.max.z]) {
+        const v = new THREE.Vector3(x, y, z).project(camera);
+        const px = ((v.x + 1) / 2) * w;
+        const py = ((1 - v.y) / 2) * h;
+        x0 = Math.min(x0, px);
+        x1 = Math.max(x1, px);
+        y0 = Math.min(y0, py);
+        y1 = Math.max(y1, py);
+      }
+    }
+  }
+  const m = Math.max(x1 - x0, y1 - y0) * 0.09;
+  x0 = Math.max(0, x0 - m);
+  y0 = Math.max(0, y0 - m);
+  x1 = Math.min(w, x1 + m);
+  y1 = Math.min(h, y1 + m);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+function captureCard() {
+  return new Promise((resolve) => {
+    grabFrame = () => {
+      const src = renderer.domElement;
+      const shot = document.createElement('canvas');
+      shot.width = src.width;
+      shot.height = src.height;
+      shot.getContext('2d').drawImage(src, 0, 0);
+      cardShot = { shot, rect: boardRect(src.width, src.height), name: picture.name, time: clock.ms };
+      resolve(cardShot);
+    };
+    wake();
+  });
+}
+
+async function cardCanvas() {
+  const c = cardShot || (await captureCard());
+  return buildCard({ ...c, bg: THEMES[theme].table.edge, ink: theme === 'dark' ? '#ecebe6' : '#2b2823' });
+}
+
+let hintTimer = 0;
+function say(text) {
+  hint.textContent = text;
+  hint.classList.remove('gone');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => clock.done && setDone(true), 3500);
+}
+document.getElementById('share-x').addEventListener('click', async () => {
+  const c = cardShot || (await captureCard());
+  const result = await shareToX(await cardCanvas(), c.name, c.time);
+  if (result === 'pasted') say('image copied · paste it into your post');
+  else if (result === 'opened') say('X is open · add the saved image to your post');
+  else if (result === 'blocked') say('allow pop-ups to open X');
+});
+document.getElementById('share-copy').addEventListener('click', async () => {
+  say((await copyImage(await cardCanvas())) ? 'image copied' : "couldn't copy · try save");
+});
+document.getElementById('share-save').addEventListener('click', async () => {
+  const c = cardShot || (await captureCard());
+  savePng(await cardCanvas(), c.name);
+});
+
+// A tab per picture: the three presets, then one for each upload (named after
+// the file). Each has a thumbnail painted from the picture itself.
+function makeTab(pic, label) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'preset';
   b.setAttribute('aria-pressed', 'false');
   const thumb = document.createElement('canvas');
   thumb.height = 88;
-  thumb.width = 132;
-  const label = document.createElement('span');
-  label.textContent = entry.name;
-  b.append(thumb, label);
+  thumb.width = Math.round(44 * pic.aspect) * 2;
+  pic.drawStill(thumb.getContext('2d'), thumb.width, thumb.height, 0);
+  const text = document.createElement('span');
+  text.textContent = label;
+  b.title = label;
+  b.pic = pic;
+  b.append(thumb, text);
+  b.addEventListener('click', () => {
+    if (picture === pic) return;
+    show(pic);
+    markTab(pic);
+  });
+  presetBar.append(b);
+  return b;
+}
+PRESETS.forEach((entry) => {
+  // Reserve the tab's place now so the order never depends on load speed.
+  const slot = document.createElement('span');
+  slot.hidden = true;
+  presetBar.append(slot);
   loadPreset(entry)
     .then((pic) => {
       presetPictures.add(pic);
-      thumb.width = Math.round(44 * pic.aspect) * 2;
-      pic.draw(thumb.getContext('2d'), thumb.width, thumb.height, 0);
+      const tab = makeTab(pic, entry.name);
+      slot.replaceWith(tab);
+      markTab(picture);
     })
-    .catch(() => b.remove());
-  b.addEventListener('click', async () => {
-    const pic = await loadPreset(entry).catch(() => null);
-    if (!pic || picture === pic) return;
-    show(pic);
-    markPreset(i);
-  });
-  presetBar.append(b);
+    .catch(() => slot.remove());
 });
-function markPreset(index) {
-  [...presetBar.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === index)));
+const MAX_UPLOADS = 4;
+const uploadTabs = [];
+function addUploadTab(pic) {
+  uploadTabs.push(makeTab(pic, pic.name));
+  document.body.classList.add('has-uploads');
+  // The oldest upload makes room for a new one (never the one on screen).
+  if (uploadTabs.length > MAX_UPLOADS) {
+    const i = uploadTabs.findIndex((t) => t.pic !== picture && t.pic !== pic);
+    const [old] = uploadTabs.splice(i, 1);
+    const k = parked.get(old.pic);
+    if (k) discard(k);
+    parked.delete(old.pic);
+    presetPictures.delete(old.pic);
+    old.remove();
+  }
+}
+function markTab(pic) {
+  [...presetBar.children].forEach((b) => b.setAttribute('aria-pressed', String(b.pic === pic)));
 }
 window.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1098,7 +1268,7 @@ countVisit();
     if (!pic) continue;
     presetPictures.add(pic);
     show(pic);
-    markPreset(i);
+    markTab(pic);
     return;
   }
 })();
@@ -1110,6 +1280,8 @@ if (new URLSearchParams(location.search).has('debug')) {
   window.__foam = {
     THREE,
     camera,
+    zone,
+    board,
     LIFT,
     HEIGHT,
     pieces: () => pieces,
@@ -1118,6 +1290,18 @@ if (new URLSearchParams(location.search).has('debug')) {
     dpr: () => renderer.getPixelRatio(),
     picture: () => picture,
     solvedAt: () => solvedAt,
+    // Test helper: starts the clock, then joins every piece up and seats it.
+    solve: () => {
+      const into = clusters[0];
+      into.pos.set(0, 0);
+      into.target.set(0, 0);
+      if (clock.since === null && !clock.done) clock.since = performance.now() - 5000;
+      for (const cl of clusters.slice(1)) {
+        const d = cl.ref().sub(into.ref());
+        cl.pos.set(into.pos.x + d.x, into.pos.y + d.z);
+        seat(cl, { board: false, other: into, mine: cl.pieces[0] });
+      }
+    },
     sparkle: () => {
       sparkles.burst(0, 0, board.w, board.d);
       wake();
