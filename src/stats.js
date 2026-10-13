@@ -3,7 +3,7 @@
 //
 // Set CODE to the name you picked when signing up at goatcounter.com. Until
 // then nothing is sent.
-const CODE = '';
+const CODE = 'jahnavi';
 
 let ready = null;
 function load() {
