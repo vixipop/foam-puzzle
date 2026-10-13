@@ -217,17 +217,9 @@ body.dropping::after {
 @media (hover: none) { .scatter kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
 
-/* ─── The icon on "Use your own image": a lock until unlocked, then the picture ─── */
-.upload .slot { position: relative; width: 18px; height: 18px; flex: none; }
-.upload .slot svg { position: absolute; inset: 0; transition: opacity 200ms ease, transform 260ms cubic-bezier(.2, .8, .2, 1); }
-.upload .lock { stroke-width: 1.7; color: var(--ink-soft); }
-.upload .lock rect { fill: color-mix(in srgb, currentColor 14%, transparent); }
-/* unlocked: the lock shrinks away, then the picture pops in */
-.upload .lock { opacity: 0; transform: scale(0.4) rotate(-20deg); }
-.upload .pic { opacity: 1; transition-delay: 140ms; }
-body.is-locked .upload .lock { opacity: 1; transform: none; }
-body.is-locked .upload .pic { opacity: 0; transform: scale(0.4); transition-delay: 0s; }
-body.is-locked .upload { cursor: pointer; }
+/* ─── The icon on "Use your own image" ─── */
+.upload .slot { width: 18px; height: 18px; flex: none; }
+.upload .slot svg { display: block; }
 
 /* ─── The eye: peek at the finished picture ─── */
 .peek-btn {
@@ -269,119 +261,6 @@ body.is-locked .upload { cursor: pointer; }
 .peek.is-open canvas { transform: none; }
 .peek-note { margin: 0; color: var(--ink-soft); font-size: 12.5px; }
 
-/* ─── The paid-feature popup, bottom right above "scatter" ───────────── */
-.unlock {
-  position: fixed;
-  right: var(--gap);
-  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 48px);
-  width: 288px;
-  max-width: calc(100vw - 32px);
-  padding: 16px 16px 14px;
-  border-radius: 16px;
-  background: var(--panel);
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--line), 0 10px 30px var(--lift);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  opacity: 0;
-  transform: translateY(8px) scale(0.98);
-  transform-origin: bottom right;
-  transition: opacity 200ms ease, transform 220ms cubic-bezier(.2, .8, .2, 1);
-  z-index: 5;
-}
-.unlock[hidden], .unlock [hidden] { display: none !important; }
-.unlock.is-open { opacity: 1; transform: none; }
-
-.unlock-title { margin: 0 22px 12px 0; font-size: 13px; line-height: 20px; }
-.reveal {
-  display: inline-block;
-  padding: 0 6px;
-  margin-left: 2px;
-  border-radius: 6px;
-  background: var(--chip);
-  color: var(--ink);
-  font: 600 12.5px/20px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  cursor: help;
-  filter: blur(5px);
-  transition: filter 320ms ease;
-  outline: none;
-}
-.reveal.is-revealed, .reveal:hover, .reveal:focus-visible { filter: none; }
-.reveal b { font-weight: 700; letter-spacing: 0.08em; }
-
-.unlock-form { display: flex; gap: 8px; }
-.unlock-form input {
-  flex: 1;
-  min-width: 0;
-  height: 34px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--chip);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--ink);
-  font: 600 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  letter-spacing: 0.5em;
-  text-align: center;
-  text-transform: uppercase;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.unlock-form input::placeholder { color: var(--ink-soft); opacity: 0.6; }
-.unlock-form input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
-.unlock-form button {
-  height: 34px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--ink);
-  color: var(--table);
-  font-weight: 600;
-  transition: opacity 200ms ease;
-}
-.unlock-form button:hover { opacity: 0.85; }
-.unlock-form.shake { animation: shake 360ms ease; }
-@keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
-.unlock-note { margin: 8px 0 0; min-height: 18px; color: var(--ink-soft); font-size: 12px; }
-.unlock-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--ink-soft);
-}
-.unlock-close:hover { background: var(--chip); color: var(--ink); }
-.unlock-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
-
-/* the win: a line of text and a burst of stars */
-.unlock-win { margin: 6px 0; text-align: center; font-size: 15px; font-weight: 600; color: var(--accent); }
-.unlock.is-won { padding-block: 22px; }
-.unlock.is-won .unlock-close { display: none; }
-.sparks { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
-.sparks i {
-  position: absolute;
-  left: -13px;
-  top: -13px;
-  width: 26px;
-  height: 26px;
-  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
-  opacity: 0;
-  animation: spark 1.3s var(--d) cubic-bezier(.2, .7, .3, 1) forwards;
-}
-@keyframes spark {
-  0% { opacity: 0; transform: translate(0, 0) scale(0) rotate(0); }
-  18% { opacity: 1; }
-  100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(var(--s)) rotate(var(--r)); }
-}
-
-.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .unlock, .reveal, .peek, .peek canvas, .upload .slot svg { transition: none; }
-  .unlock-form.shake { animation: none; }
+  .peek, .peek canvas { transition: none; }
 }
