@@ -5,10 +5,10 @@ import { cutPuzzle, gridFor, smooth, topFlipped } from './shape.js';
 import { Cluster } from './cluster.js';
 import { createQualityGuard } from './quality.js';
 import { THEMES, savedTheme, saveTheme } from './theme.js';
-import { createUnlock } from './unlock.js';
 import { foamMaterial, printMaterial } from './materials.js';
 import { printTexture, tableTexture, shadowTexture, dottedFrameTexture, targetTexture } from './textures.js';
 import { PRESETS, loadPreset, pictureFromImage } from './pictures.js';
+import { countSolve, countVisit } from './stats.js';
 import { createSparkles } from './sparkles.js';
 import { createSoften } from './soften.js';
 import { wakeAudio, soundLift, soundLand, soundSnap, soundDone, startMusic, stopMusic } from './audio.js';
@@ -391,6 +391,7 @@ function show(pic) {
     keepOnScreen(cl, cl.target);
     keepOnScreen(cl, cl.pos);
   });
+  unpile();
   setDone(clusters.length === 1);
   wake();
 }
@@ -494,6 +495,7 @@ function resize() {
     keepOnScreen(cl, cl.target);
     keepOnScreen(cl, cl.pos);
   });
+  unpile();
   wake();
 }
 
@@ -555,6 +557,7 @@ function scatter(pop = false) {
   sparkles.clear();
   print.userData.paint(picture, 0);
   setDone(false);
+  unpile(2.5); // a tight screen can leave a few spots too close
   wake();
 }
 
@@ -642,7 +645,9 @@ function seat(cl, fit) {
     // Animated pictures come alive; stills stay still.
     if (picture.animated) solvedAt = performance.now();
     setDone(true);
+    countSolve(presetPictures.has(picture) ? picture.name : 'your own image');
   }
+  unpile(); // anything loose it landed on slides out from under it
 }
 
 // ─── Input ───────────────────────────────────────────────────────────────
@@ -828,6 +833,13 @@ function step(cl, dt) {
 }
 
 // A piece dropped on top of another slides off instead of clipping through.
+// After a scatter, a resize or coming back to a parked puzzle, pieces can sit
+// on top of each other (a small screen squeezes them together). Treat every
+// loose one as freshly dropped for a moment so separate() pushes them apart.
+function unpile(seconds = 1.2) {
+  for (const cl of clusters) if (!cl.locked) cl.droppedAt = simTime + seconds - 1.2;
+}
+
 // Only freshly dropped clusters get pushed, so the cost stays tiny.
 function separate(dt) {
   const MIN = 1.16 * Math.sqrt(board.cw * board.ch);
@@ -842,8 +854,10 @@ function separate(dt) {
           const d = Math.hypot(dx, dz);
           if (d >= MIN) continue;
           if (d < 1e-4) {
-            dx = 1;
-            dz = 0;
+            // Exactly stacked: any way out will do, as long as the two differ.
+            const a = Math.random() * Math.PI * 2;
+            dx = Math.cos(a);
+            dz = Math.sin(a);
           } else {
             dx /= d;
             dz /= d;
@@ -929,23 +943,12 @@ function frame(now) {
   else running = false;
 }
 
-// "Use your own image" starts locked (see unlock.js); uploads of every kind
-// (button, drop, paste) wait until the code is in.
-const paywall = createUnlock(uploadButton, () => {
-  hint.textContent = 'unlocked · any PNG or JPEG';
-  hint.classList.remove('gone');
-});
-
 // ─── Your own image ──────────────────────────────────────────────────────
 // A new picture cuts a new puzzle in its shape. Uploads are stills only:
 // PNG or JPEG. (Animated pictures are presets.)
 const UPLOADABLE = ['image/png', 'image/jpeg'];
 async function useImage(file) {
   if (!file) return;
-  if (paywall.isLocked()) {
-    paywall.open();
-    return;
-  }
   if (!UPLOADABLE.includes(file.type)) {
     hint.textContent = 'use a PNG or JPEG';
     hint.classList.remove('gone');
@@ -1087,6 +1090,7 @@ renderer.setSize(window.innerWidth, window.innerHeight, false);
 soften.resize();
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
+countVisit();
 // Start on the first preset; if its file can't load, the next one.
 (async () => {
   for (let i = 0; i < PRESETS.length; i++) {
