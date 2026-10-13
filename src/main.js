@@ -365,6 +365,26 @@ function applyTheme(name) {
   if (zone.mesh) buildZone();
   wake();
 }
+// For testing the share flow: puts every piece in its true place, as if you'd
+// solved it (the clock shows a believable time).
+function testSolve() {
+  if (clock.done || !pieces.length) return;
+  if (clock.since === null) clock.since = performance.now() - 78000;
+  const into = clusters[0];
+  const own = into.ref();
+  into.pos.set(own.x, own.z);
+  into.target.copy(into.pos);
+  into.lift = into.liftTo = 0;
+  into.locked = true;
+  for (const cl of clusters.slice(1)) {
+    const d = cl.ref().sub(into.ref());
+    cl.pos.set(into.pos.x + d.x, into.pos.y + d.z);
+    cl.lift = cl.liftTo = 0;
+    seat(cl, { board: false, other: into, mine: cl.pieces[0] });
+  }
+  wake();
+}
+
 if (new URLSearchParams(location.search).has('tune')) {
   // Open the page with ?tune for a slider that sets the table grain live.
   const box = document.createElement('label');
@@ -385,6 +405,11 @@ if (new URLSearchParams(location.search).has('tune')) {
   });
   themeButton.addEventListener('click', () => setTimeout(() => (range.value = grainLevel(theme))));
   box.append(range);
+  const solve = document.createElement('button');
+  solve.type = 'button';
+  solve.textContent = 'solve';
+  solve.addEventListener('click', testSolve);
+  box.append(solve);
   document.body.append(box);
 }
 themeButton.addEventListener('click', () => {
@@ -747,7 +772,7 @@ function seat(cl, fit) {
     showClock();
     setDone(true);
     const solvedPicture = picture;
-    setTimeout(() => picture === solvedPicture && clock.done && captureCard(), 900); // sparkles at their best
+    setTimeout(() => picture === solvedPicture && clock.done && captureCard(), 1500);
     countSolve(presetPictures.has(picture) ? picture.name : 'your own image');
   }
   unpile(); // anything loose it landed on slides out from under it
@@ -1170,34 +1195,33 @@ scatterButton.addEventListener('click', () => scatter(true));
 // A snapshot of the solved board, cropped to the puzzle with a margin for the
 // sparkles, taken from the next frame drawn.
 function boardRect(w, h) {
-  // Where the finished puzzle actually sits: it can be put together anywhere.
+  // The puzzle (it can be put together anywhere) and the dotted frame, with
+  // room round them for the sparkles.
   const p0 = pieces[0];
   const sx = p0.cluster.pos.x + p0.offset.x - p0.layout.x;
   const sz = p0.cluster.pos.y + p0.offset.z - p0.layout.z;
-  const box = new THREE.Box3(
-    new THREE.Vector3(sx - board.w / 2, 0, sz - board.d / 2),
-    new THREE.Vector3(sx + board.w / 2, HEIGHT, sz + board.d / 2)
-  );
+  const boxes = [
+    [sx - board.w / 2, sx + board.w / 2, sz - board.d / 2, sz + board.d / 2, HEIGHT],
+    [-zone.w / 2, zone.w / 2, zone.z - zone.d / 2, zone.z + zone.d / 2, 0],
+  ];
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const x of [box.min.x, box.max.x]) {
-    for (const y of [0, HEIGHT]) {
-      for (const z of [box.min.z, box.max.z]) {
-        const v = new THREE.Vector3(x, y, z).project(camera);
-        const px = ((v.x + 1) / 2) * w;
-        const py = ((1 - v.y) / 2) * h;
-        x0 = Math.min(x0, px);
-        x1 = Math.max(x1, px);
-        y0 = Math.min(y0, py);
-        y1 = Math.max(y1, py);
+  for (const [ax, bx, az, bz, top] of boxes) {
+    for (const x of [ax, bx]) {
+      for (const y of [0, top]) {
+        for (const z of [az, bz]) {
+          const v = new THREE.Vector3(x, y, z).project(camera);
+          const px = ((v.x + 1) / 2) * w;
+          const py = ((1 - v.y) / 2) * h;
+          x0 = Math.min(x0, px);
+          x1 = Math.max(x1, px);
+          y0 = Math.min(y0, py);
+          y1 = Math.max(y1, py);
+        }
       }
     }
   }
-  const m = Math.max(x1 - x0, y1 - y0) * 0.09;
-  x0 = Math.max(0, x0 - m);
-  y0 = Math.max(0, y0 - m);
-  x1 = Math.min(w, x1 + m);
-  y1 = Math.min(h, y1 + m);
-  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  const m = Math.max(x1 - x0, y1 - y0) * 0.07;
+  return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
 }
 
 function captureCard() {
@@ -1213,6 +1237,16 @@ function captureCard() {
         sparkles.update(0, renderer.getDrawingBufferSize(bufSize).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)));
         soften.render(scene, camera);
       };
+      // Settle the foam and swap the live sparkles for a tidy ring round the puzzle.
+      for (const p of pieces) p.squash = p.squashV = 0;
+      clusters.forEach(apply);
+      const p0 = pieces[0];
+      const before = sparkles.pose(
+        p0.cluster.pos.x + p0.offset.x - p0.layout.x,
+        p0.cluster.pos.y + p0.offset.z - p0.layout.z,
+        board.w,
+        board.d
+      );
       renderer.setPixelRatio(big);
       soften.resize();
       redraw();
@@ -1221,6 +1255,7 @@ function captureCard() {
       shot.height = src.height;
       shot.getContext('2d').drawImage(src, 0, 0);
       cardShot = { shot, rect: boardRect(src.width, src.height), name: picture.name, time: clock.ms };
+      sparkles.undo(before);
       renderer.setPixelRatio(ratio);
       soften.resize();
       redraw();
@@ -1236,17 +1271,17 @@ async function cardCanvas() {
 }
 
 let hintTimer = 0;
-function say(text) {
+function say(text, ms = 4000) {
   hint.textContent = text;
   hint.classList.remove('gone');
   clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => clock.done && setDone(true), 3500);
+  hintTimer = setTimeout(() => clock.done && setDone(true), ms);
 }
 document.getElementById('share-x').addEventListener('click', async () => {
   const c = cardShot || (await captureCard());
   const result = await shareToX(await cardCanvas(), c.name, c.time);
-  if (result === 'pasted') say('image copied · paste it into your post');
-  else if (result === 'opened') say('X is open · add the saved image to your post');
+  if (result === 'pasted') say('image copied · press Ctrl+V (⌘V on Mac) in the X post', 20000);
+  else if (result === 'opened') say('X is open · paste the image (Ctrl+V) or attach the saved one', 20000);
   else if (result === 'blocked') say('allow pop-ups to open X');
 });
 document.getElementById('share-copy').addEventListener('click', async () => {
@@ -1361,18 +1396,7 @@ if (new URLSearchParams(location.search).has('debug')) {
     dpr: () => renderer.getPixelRatio(),
     picture: () => picture,
     solvedAt: () => solvedAt,
-    // Test helper: starts the clock, then joins every piece up and seats it.
-    solve: () => {
-      const into = clusters[0];
-      into.pos.set(0, 0);
-      into.target.set(0, 0);
-      if (clock.since === null && !clock.done) clock.since = performance.now() - 5000;
-      for (const cl of clusters.slice(1)) {
-        const d = cl.ref().sub(into.ref());
-        cl.pos.set(into.pos.x + d.x, into.pos.y + d.z);
-        seat(cl, { board: false, other: into, mine: cl.pieces[0] });
-      }
-    },
+    solve: testSolve,
     sparkle: () => {
       sparkles.burst(0, 0, board.w, board.d);
       wake();

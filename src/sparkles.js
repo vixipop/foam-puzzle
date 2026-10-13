@@ -117,6 +117,42 @@ export function createSparkles(scene) {
         });
       }
     },
+    // A still arrangement for the share card: stars round the outside of the
+    // board only, never over the picture. Returns what was showing, for undo().
+    pose(cx, cz, w, d, count = 26) {
+      const before = parts;
+      parts = [];
+      const per = 2 * (w + d);
+      for (let i = 0; i < count; i++) {
+        const k = ((i + Math.random() * 0.8) / count) * per;
+        let x;
+        let z;
+        let nx = 0;
+        let nz = 0;
+        if (k < w) [x, z, nz] = [k - w / 2, -d / 2, -1];
+        else if (k < w + d) [x, z, nx] = [w / 2, k - w - d / 2, 1];
+        else if (k < 2 * w + d) [x, z, nz] = [k - w - d - w / 2, d / 2, 1];
+        else [x, z, nx] = [-w / 2, k - 2 * w - d - d / 2, -1];
+        const out = 0.45 + Math.random() * 0.9; // clear of the edge
+        parts.push({
+          x: cx + x + nx * out,
+          z: cz + z + nz * out,
+          y: 0.25 + Math.random() * 0.5,
+          vy: 0,
+          drift: 0,
+          delay: 0,
+          life: 2,
+          size: 0.2 + Math.random() * 0.22,
+          spin: Math.random() * Math.PI * 2,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          age: 0.5,
+        });
+      }
+      return before;
+    },
+    undo(before) {
+      parts = before;
+    },
     clear() {
       parts = [];
       geo.setDrawRange(0, 0);

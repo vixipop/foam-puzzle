@@ -7,28 +7,42 @@ export function formatTime(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-// shot: a canvas holding the frame; rect: the part of it to keep.
+// shot: a canvas holding the frame; rect: the part of it to keep (it may run
+// past the edges; the table colour fills in). The picture is kept between 4:3
+// and 16:10 by adding table above and below, so it never looks cramped.
 export function buildCard({ shot, rect, name, time, bg, ink }) {
-  const W = 1080;
-  const scale = W / rect.w;
-  const bodyH = Math.round(rect.h * scale);
-  const foot = 96;
+  const W = 1200;
+  const aspect = Math.min(1.6, Math.max(1.33, rect.w / rect.h));
+  const hKeep = rect.w / aspect;
+  const keep = { x: rect.x, y: rect.y - (hKeep - rect.h) / 2, w: rect.w, h: hKeep };
+  const scale = W / keep.w;
+  const bodyH = Math.round(keep.h * scale);
+  const foot = 104;
   const cv = document.createElement('canvas');
   cv.width = W;
   cv.height = bodyH + foot;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(shot, rect.x, rect.y, rect.w, rect.h, 0, 0, W, bodyH);
+  // Copy just the part of the frame that exists.
+  const sx = Math.max(0, keep.x);
+  const sy = Math.max(0, keep.y);
+  const sw = Math.min(shot.width, keep.x + keep.w) - sx;
+  const sh = Math.min(shot.height, keep.y + keep.h) - sy;
+  ctx.drawImage(shot, sx, sy, sw, sh, (sx - keep.x) * scale, (sy - keep.y) * scale, sw * scale, sh * scale);
+  // The footer: a hairline, the name and time, the handle.
   ctx.fillStyle = ink;
+  ctx.globalAlpha = 0.12;
+  ctx.fillRect(0, bodyH, W, 2);
+  ctx.globalAlpha = 1;
   ctx.textBaseline = 'middle';
-  ctx.font = '600 30px system-ui, -apple-system, "Segoe UI", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`${name} · finished in ${formatTime(time)}`, 40, bodyH + foot / 2);
+  ctx.font = '600 34px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.fillText(`${name} · finished in ${formatTime(time)}`, 48, bodyH + foot / 2 + 1);
   ctx.globalAlpha = 0.6;
-  ctx.font = '500 26px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.font = '500 28px system-ui, -apple-system, "Segoe UI", sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText(HANDLE, W - 40, bodyH + foot / 2);
+  ctx.fillText(HANDLE, W - 48, bodyH + foot / 2 + 1);
   return cv;
 }
 

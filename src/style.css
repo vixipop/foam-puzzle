@@ -343,3 +343,4 @@ body.dropping::after {
 /* ?tune: a slider for the table grain. */
 .tune { position: fixed; left: var(--gap); top: 64px; z-index: 6; display: flex; gap: 8px; align-items: center; color: var(--ink-soft); font-size: 12px; }
 .tune input { width: 140px; }
+.tune button { font: inherit; padding: 2px 10px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
