@@ -82,7 +82,8 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   top: max(14px, env(safe-area-inset-top));
 }
 /* Everything along the top is 40px tall, fully round, 13px type. */
-.topcenter { left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 8px; z-index: 3; }
+.topcenter { left: 0; right: 0; display: flex; justify-content: center; align-items: stretch; gap: 8px; z-index: 3; pointer-events: none; }
+.topcenter > * { pointer-events: auto; }
 .actions { right: var(--gap); display: flex; align-items: center; gap: 8px; }
 
 .icon-btn {
@@ -91,7 +92,7 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: 14px;
   background: none;
   color: var(--ink-soft);
   transition: color 200ms ease, background 200ms ease;
@@ -112,7 +113,7 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--bar);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   backdrop-filter: blur(14px) saturate(1.2);
@@ -124,7 +125,7 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   gap: 8px;
   padding: 4px 13px 4px 4px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
@@ -133,9 +134,9 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   transition: background 200ms ease, color 200ms ease;
 }
 .preset canvas {
-  height: 32px;
+  height: 24px;
   width: auto;
-  border-radius: 999px;
+  border-radius: 6px;
   box-shadow: 0 1px 2px var(--lift);
   display: block;
 }
@@ -151,7 +152,7 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--chip);
   box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px var(--lift-soft);
   color: var(--ink);
@@ -184,7 +185,7 @@ body.ready .hint { opacity: 1; transform: translate(-50%, 0); transition-delay: 
   height: 36px;
   padding: 0 12px 0 14px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: none;
   color: var(--ink-soft);
   transition: color 200ms ease, background 200ms ease;
@@ -282,7 +283,7 @@ body.dropping::after {
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--bar);
   box-shadow: inset 0 0 0 1px var(--line);
   transform: translateX(-50%);
@@ -296,7 +297,7 @@ body.dropping::after {
   height: 30px;
   padding: 0 13px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: none;
   color: var(--ink-soft);
   font: inherit;
@@ -333,7 +334,7 @@ body.dropping::after {
 /* ?tune: a slider for the table grain. */
 .tune { position: fixed; left: var(--gap); top: 64px; z-index: 6; display: flex; gap: 8px; align-items: center; color: var(--ink-soft); font-size: 12px; }
 .tune input { width: 140px; }
-.tune button { font: inherit; padding: 2px 10px; border: 0; border-radius: 999px; background: var(--chip); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.tune button { font: inherit; padding: 2px 10px; border: 0; border-radius: 8px; background: var(--chip); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
 
 /* A small tooltip on Share on X. */
 .share button { position: relative; }
@@ -378,9 +379,10 @@ body.dropping::after {
   align-items: center;
   gap: 8px;
   min-width: 84px;
+  height: 40px;
   padding: 0 16px 0 13px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--bar);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   backdrop-filter: blur(14px) saturate(1.2);
@@ -430,4 +432,10 @@ body.dropping::after {
   .topcenter { top: max(64px, calc(env(safe-area-inset-top) + 50px)); }
 }
 
+
 .share[hidden] { display: none; }
+
+/* Wide screens: the timer sits on the left, after the music and theme buttons. */
+@media (min-width: 921px) {
+  .clock { position: fixed; top: max(14px, env(safe-area-inset-top)); left: calc(var(--gap) + 92px); }
+}
