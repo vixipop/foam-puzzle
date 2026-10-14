@@ -83,7 +83,7 @@ export function createSparkles(scene) {
 
   return {
     // Scatter stars around a w × d board centred at (cx, cz).
-    burst(cx, cz, w, d, count = 100) {
+    burst(cx, cz, w, d, count = MAX) {
       parts = [];
       for (let i = 0; i < Math.min(count, MAX); i++) {
         // Mostly along the edge, a few over the picture.

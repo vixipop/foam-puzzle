@@ -135,12 +135,27 @@ function showClock() {
   clockEl.textContent = formatTime(clockMs());
   clockEl.classList.toggle('done', clock.done);
 }
+// The "yay!" card at the moment of solving; it fades on its own after a while.
+const finishEl = document.getElementById('finish');
+let finishTimer = 0;
+function celebrate() {
+  document.getElementById('finish-time').textContent = formatTime(clock.ms);
+  finishEl.hidden = false;
+  finishEl.style.animation = 'none';
+  void finishEl.offsetWidth; // restart the pop-in
+  finishEl.style.animation = '';
+  clearTimeout(finishTimer);
+  finishTimer = setTimeout(() => (finishEl.hidden = true), 4200);
+  wake();
+}
 setInterval(() => clock.since !== null && showClock(), 250);
 function resetClock() {
   clock = { ms: 0, since: null, done: false };
   cardShot = null;
   grabFrame = null;
   shareBar.hidden = true;
+  finishEl.hidden = true;
+  clearTimeout(finishTimer);
   showClock();
 } // performance.now() when the last piece went in
 const sparkles = createSparkles(scene);
@@ -770,6 +785,7 @@ function seat(cl, fit) {
     clock.since = null;
     clock.done = true;
     showClock();
+    celebrate();
     setDone(true);
     const solvedPicture = picture;
     setTimeout(() => picture === solvedPicture && clock.done && captureCard(), 1500);
