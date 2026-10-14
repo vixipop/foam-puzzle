@@ -429,3 +429,5 @@ body.dropping::after {
 @media (max-width: 920px) {
   .topcenter { top: max(64px, calc(env(safe-area-inset-top) + 50px)); }
 }
+
+.share[hidden] { display: none; }
