@@ -126,26 +126,55 @@ let picture = null;
 let solvedAt = null;
 // How long this puzzle has taken: runs from the first piece picked up until
 // it's solved; paused while another picture is showing.
-let clock = { ms: 0, since: null, done: false };
+let clock = { ms: 0, since: null, done: false, paused: false };
 let cardShot = null; // the solved frame, for the share card
 let grabFrame = null;
 const clockMs = () => clock.ms + (clock.since === null ? 0 : performance.now() - clock.since);
+const clockTime = document.getElementById('clock-time');
 function showClock() {
   clockEl.hidden = clock.ms === 0 && clock.since === null;
   clockEl.classList.toggle('done', clock.done);
-  if (clock.done) clockEl.innerHTML = `<span class="yay">yay!</span> you finished it in <b>${formatTime(clock.ms)}</b>`;
-  else clockEl.textContent = formatTime(clockMs());
+  clockEl.classList.toggle('paused', clock.paused !== false);
+  clockTime.textContent = formatTime(clockMs());
+  const label = clock.done ? 'Finished' : clock.paused ? 'Resume the timer' : 'Pause the timer';
+  clockEl.title = clockEl.ariaLabel = label;
 }
-// At the moment of solving, the timer's spot pops to say so.
+// At the moment of solving, the pill pops.
 function celebrate() {
   clockEl.classList.remove('pop');
   void clockEl.offsetWidth; // restart the animation
   clockEl.classList.add('pop');
   wake();
 }
+// Tap the pill to pause. Looking away (another tab or window) pauses too and
+// picks up again on return; picking up a piece resumes a paused clock.
+function pauseClock(why) {
+  if (clock.since === null || clock.done) return;
+  clock.ms = clockMs();
+  clock.since = null;
+  clock.paused = why;
+  showClock();
+}
+function resumeClock() {
+  if (clock.done || !clock.paused) return;
+  clock.since = performance.now();
+  clock.paused = false;
+  showClock();
+}
+clockEl.addEventListener('click', () => {
+  if (clock.done) return;
+  if (clock.paused) resumeClock();
+  else pauseClock('manual');
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pauseClock('auto');
+  else if (clock.paused === 'auto') resumeClock();
+});
+window.addEventListener('blur', () => pauseClock('auto'));
+window.addEventListener('focus', () => clock.paused === 'auto' && !document.hidden && resumeClock());
 setInterval(() => clock.since !== null && showClock(), 250);
 function resetClock() {
-  clock = { ms: 0, since: null, done: false };
+  clock = { ms: 0, since: null, done: false, paused: false };
   cardShot = null;
   grabFrame = null;
   shareBar.hidden = true;
@@ -465,7 +494,7 @@ function park() {
     shadowPlane,
     shadowSize,
     solvedFor: solvedAt === null ? null : performance.now() - solvedAt,
-    clock: { ms: clockMs(), since: null, done: clock.done },
+    clock: { ms: clockMs(), since: null, done: clock.done, paused: false },
     cardShot,
   };
   if (presetPictures.has(picture)) parked.set(picture, keep);
@@ -845,6 +874,7 @@ canvas.addEventListener('pointerdown', (e) => {
   hint.classList.add('gone');
   if (clock.since === null && !clock.done) {
     clock.since = performance.now();
+    clock.paused = false;
     showClock();
   }
   wake();
@@ -1191,7 +1221,8 @@ showMusic();
 // ─── Words and keys ──────────────────────────────────────────────────────
 function setDone(done) {
   if (done) {
-    hint.textContent = matchMedia('(hover: none)').matches ? 'solved · scatter to go again' : 'solved · R scatters it again';
+    const yay = `yay! you finished it in ${formatTime(clock.ms)}`;
+    hint.textContent = matchMedia('(hover: none)').matches ? yay : `${yay} · R scatters it again`;
     hint.classList.remove('gone');
     shareBar.hidden = false;
   } else {

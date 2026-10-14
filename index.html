@@ -20,7 +20,18 @@
       <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.2A7.8 7.8 0 0 1 9.8 4.5a7.8 7.8 0 1 0 9.7 9.7z" /></svg>
     </button>
 
-    <nav id="presets" class="presets" aria-label="Pictures"></nav>
+    <div class="topcenter">
+      <nav id="presets" class="presets" aria-label="Pictures"></nav>
+      <button id="clock" class="clock" type="button" title="Pause" aria-label="Pause the timer" hidden>
+        <svg class="clock-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <circle class="i-dot" cx="8" cy="8" r="3.1" />
+          <path class="i-pause" d="M5.7 4.4v7.2M10.3 4.4v7.2" />
+          <path class="i-play" d="M6 4.3l5.6 3.7L6 11.7z" />
+          <path class="i-done" d="M3.9 8.5l2.7 2.6 5.5-5.7" />
+        </svg>
+        <span id="clock-time">0:00</span>
+      </button>
+    </div>
 
     <div class="actions">
       <button id="peek-open" class="icon-btn peek-btn" type="button" aria-label="View puzzle image" title="View puzzle image">
@@ -42,7 +53,6 @@
     </div>
 
     <div id="boot" class="boot" aria-live="polite">best experienced on a desktop</div>
-    <div id="clock" class="clock" aria-label="Time taken" hidden>0:00</div>
     <div id="share" class="share" hidden>
       <button id="share-x" type="button" data-tip="Give it a couple of seconds for the post preview to load">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3L14.2 10.5 22 21h-6.1l-4.8-6.3L5.6 21h-3l7-8L2.2 3h6.2l4.3 5.8L17.8 3zm-1 16.2h1.7L7.3 4.7H5.5l11.3 14.5z" /></svg>

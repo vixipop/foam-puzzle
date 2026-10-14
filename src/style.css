@@ -77,15 +77,17 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
 }
 
 /* Top bar: music and theme (left), pictures (centre), eye and upload (right). */
-.music, .theme, .presets, .actions {
+.music, .theme, .topcenter, .actions {
   position: fixed;
   top: max(14px, env(safe-area-inset-top));
 }
+/* Everything along the top is 40px tall, fully round, 13px type. */
+.topcenter { left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 8px; z-index: 3; }
 .actions { right: var(--gap); display: flex; align-items: center; gap: 8px; }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border: 0;
@@ -96,7 +98,7 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
 }
 .icon-btn:hover { color: var(--ink); background: var(--chip); }
 .music { left: var(--gap); }
-.theme { left: calc(var(--gap) + 40px); }
+.theme { left: calc(var(--gap) + 44px); }
 .music svg, .theme svg { width: 20px; height: 20px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .music .wave { fill: none; }
 .theme .moon { display: none; }
@@ -107,30 +109,33 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
 .music[aria-pressed="false"] .off { display: block; }
 
 .presets {
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--bar);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .preset {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px 4px 4px;
+  padding: 4px 13px 4px 4px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
   background: none;
   color: var(--ink-soft);
   transition: background 200ms ease, color 200ms ease;
 }
 .preset canvas {
-  height: 26px;
+  height: 32px;
   width: auto;
-  border-radius: 6px;
+  border-radius: 999px;
   box-shadow: 0 1px 2px var(--lift);
   display: block;
 }
@@ -141,8 +146,11 @@ button:focus-visible, .upload:focus-visible, #file:focus-visible + .upload {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  padding: 0 14px 0 11px;
+  height: 40px;
+  padding: 0 16px 0 13px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
   border-radius: 999px;
   background: var(--chip);
   box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px var(--lift-soft);
@@ -207,11 +215,11 @@ body.dropping::after {
 
 /* Narrow screens: pictures drop to their own row, labels hide. */
 @media (max-width: 720px) {
-  .presets { top: max(58px, calc(env(safe-area-inset-top) + 44px)); }
+  .topcenter { top: max(64px, calc(env(safe-area-inset-top) + 50px)); }
   .preset span { display: none; }
   .preset { padding: 4px; }
   .peek-btn .label { display: none; }
-  .peek-btn { width: 36px; padding: 0; }
+  .peek-btn { width: 40px; padding: 0; }
   .upload { padding: 0 12px 0 10px; }
 }
 @media (hover: none) { .scatter kbd { display: none; } }
@@ -266,39 +274,7 @@ body.dropping::after {
 }
 
 /* ─── Timer and share ─── */
-.clock {
-  position: fixed;
-  left: 50%;
-  top: 58px;
-  transform: translateX(-50%);
-  margin: 0;
-  color: var(--ink);
-  font-size: 34px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-align: center;
-  z-index: 4;
-}
-/* Solved: the same spot says so, so the picture itself stays clear. */
-.clock.done { font-size: 22px; font-weight: 500; }
-.clock b { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-.clock .yay { display: inline-block; font-weight: 700; margin-right: 2px; }
-.clock.pop { animation: clock-pop 520ms cubic-bezier(.2, 1.4, .4, 1); }
-.clock.pop .yay { animation: yay 800ms ease-in-out 200ms 2; }
-.clock[hidden], .share[hidden] { display: none; }
-@keyframes clock-pop {
-  from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.85); }
-  to { opacity: 1; transform: translateX(-50%) scale(1); }
-}
-@keyframes yay {
-  0%, 100% { transform: scale(1) rotate(0); }
-  30% { transform: scale(1.4) rotate(-7deg); }
-  60% { transform: scale(1.12) rotate(4deg); }
-}
-@media (prefers-reduced-motion: reduce) { .clock.pop, .clock.pop .yay { animation: none; } }
+
 .share {
   position: fixed;
   left: 50%;
@@ -335,8 +311,7 @@ body.dropping::after {
 
 /* Tabs made from uploads. */
 .preset span { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 1100px) { body.has-uploads .preset span { display: none; } body.has-uploads .preset { padding: 4px; } }
-@media (max-width: 1060px) { .preset span { display: none; } .preset { padding: 4px; } }
+@media (max-width: 1180px) { .preset span { display: none; } .preset { padding: 4px; } }
 
 /* Shown on phones until the puzzle is ready. */
 .boot {
@@ -393,8 +368,64 @@ body.dropping::after {
 /* Phones: the host's corner badge sits along the bottom, so everything there rises above it. */
 @media (max-width: 720px) {
   .hint { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 52px); }
-  .clock { top: max(112px, calc(env(safe-area-inset-top) + 100px)); font-size: 28px; }
-  .clock.done { font-size: 17px; }
   .share { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 112px); }
   .scatter { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 158px); }
+}
+
+/* ─── The timer: a translucent pill beside the tabs; tap it to pause ─── */
+.clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 84px;
+  padding: 0 16px 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: transform 260ms cubic-bezier(.34, 1.56, .64, 1), background 200ms ease;
+}
+.clock[hidden] { display: none; }
+.clock:hover { background: var(--chip); }
+.clock:active { transform: scale(0.94); }
+.clock-icon { width: 16px; height: 16px; flex: none; overflow: visible; color: var(--ink-soft); }
+.clock-icon * { transform-box: fill-box; transform-origin: center; transition: opacity 180ms ease, transform 320ms cubic-bezier(.34, 1.56, .64, 1); }
+.clock-icon .i-dot { fill: currentColor; animation: breathe 2.4s ease-in-out infinite; }
+.clock-icon .i-pause, .clock-icon .i-done { fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.clock-icon .i-play { fill: currentColor; }
+.clock-icon .i-pause, .clock-icon .i-play, .clock-icon .i-done { opacity: 0; transform: scale(0.4) rotate(-40deg); }
+@keyframes breathe { 50% { transform: scale(0.72); opacity: 0.55; } }
+/* Running: hover to see the pause bars. */
+@media (hover: hover) {
+  .clock:not(.paused):not(.done):hover .i-dot { opacity: 0; animation: none; transform: scale(0.3); }
+  .clock:not(.paused):not(.done):hover .i-pause { opacity: 1; transform: none; }
+}
+/* Paused: a play triangle, and the time breathes. */
+.clock.paused .i-dot { opacity: 0; animation: none; }
+.clock.paused .i-play { opacity: 1; transform: none; }
+.clock.paused #clock-time { animation: soft-blink 1.8s ease-in-out infinite; }
+@keyframes soft-blink { 50% { opacity: 0.4; } }
+/* Finished: a tick, and a little pop. */
+.clock.done { cursor: default; }
+.clock.done .i-dot { opacity: 0; animation: none; }
+.clock.done .i-done { opacity: 1; transform: none; color: var(--ink); }
+.clock.pop { animation: clock-pop 700ms cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes clock-pop { 0% { transform: scale(0.8); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .clock, .clock-icon *, .clock.pop { transition: none; animation: none; }
+  .clock-icon .i-dot { animation: none; }
+}
+
+/* Mid-width screens: the tabs and timer drop to their own row below the buttons. */
+@media (max-width: 920px) {
+  .topcenter { top: max(64px, calc(env(safe-area-inset-top) + 50px)); }
 }
