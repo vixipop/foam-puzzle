@@ -215,13 +215,6 @@ body.dropping::after {
   .upload { padding: 0 12px 0 10px; }
 }
 @media (hover: none) { .scatter kbd { display: none; } }
-/* Phones: the host's corner badge sits along the bottom, so everything there rises above it. */
-@media (max-width: 720px) {
-  .hint { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 52px); }
-  .clock { top: max(112px, calc(env(safe-area-inset-top) + 100px)); font-size: 22px; }
-  .share { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 112px); }
-  .scatter { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 158px); }
-}
 @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
 
 /* ─── The icon on "Use your own image" ─── */
@@ -276,55 +269,36 @@ body.dropping::after {
 .clock {
   position: fixed;
   left: 50%;
-  top: 66px;
+  top: 58px;
   transform: translateX(-50%);
   margin: 0;
-  padding: 6px 18px;
-  border-radius: 999px;
-  background: var(--bar);
-  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--ink);
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   line-height: 1.2;
-  z-index: 4;
-  transition: color 300ms ease, box-shadow 300ms ease;
-}
-.clock.done { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
-.clock[hidden], .share[hidden], .finish[hidden] { display: none; }
-
-/* The moment you finish: a short "yay!" card over the board. */
-.finish {
-  position: fixed;
-  left: 50%;
-  top: 42%;
-  transform: translate(-50%, -50%);
-  padding: 16px 26px;
-  border-radius: 20px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line), 0 14px 40px var(--lift);
-  color: var(--ink);
-  font-size: 20px;
-  text-align: center;
   white-space: nowrap;
-  pointer-events: none;
-  z-index: 6;
-  animation: finish-in 620ms cubic-bezier(.2, 1.4, .4, 1) both;
+  text-align: center;
+  z-index: 4;
 }
-.finish b { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-.finish-yay { display: inline-block; font-weight: 700; margin-right: 4px; animation: yay 900ms ease-in-out 300ms 2; }
-@keyframes finish-in {
-  from { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+/* Solved: the same spot says so, so the picture itself stays clear. */
+.clock.done { font-size: 22px; font-weight: 500; }
+.clock b { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.clock .yay { display: inline-block; font-weight: 700; margin-right: 2px; }
+.clock.pop { animation: clock-pop 520ms cubic-bezier(.2, 1.4, .4, 1); }
+.clock.pop .yay { animation: yay 800ms ease-in-out 200ms 2; }
+.clock[hidden], .share[hidden] { display: none; }
+@keyframes clock-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.85); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 @keyframes yay {
   0%, 100% { transform: scale(1) rotate(0); }
-  30% { transform: scale(1.35) rotate(-6deg); }
-  60% { transform: scale(1.1) rotate(4deg); }
+  30% { transform: scale(1.4) rotate(-7deg); }
+  60% { transform: scale(1.12) rotate(4deg); }
 }
-@media (prefers-reduced-motion: reduce) { .finish, .finish-yay { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .clock.pop, .clock.pop .yay { animation: none; } }
 .share {
   position: fixed;
   left: 50%;
@@ -415,3 +389,12 @@ body.dropping::after {
   transition-delay: 250ms;
 }
 @media (prefers-reduced-motion: reduce) { .share button[data-tip]::after { transition: none; } }
+
+/* Phones: the host's corner badge sits along the bottom, so everything there rises above it. */
+@media (max-width: 720px) {
+  .hint { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 52px); }
+  .clock { top: max(112px, calc(env(safe-area-inset-top) + 100px)); font-size: 28px; }
+  .clock.done { font-size: 17px; }
+  .share { bottom: calc(max(26px, env(safe-area-inset-bottom)) + 112px); }
+  .scatter { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 158px); }
+}

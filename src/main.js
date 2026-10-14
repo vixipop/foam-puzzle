@@ -132,20 +132,15 @@ let grabFrame = null;
 const clockMs = () => clock.ms + (clock.since === null ? 0 : performance.now() - clock.since);
 function showClock() {
   clockEl.hidden = clock.ms === 0 && clock.since === null;
-  clockEl.textContent = formatTime(clockMs());
   clockEl.classList.toggle('done', clock.done);
+  if (clock.done) clockEl.innerHTML = `<span class="yay">yay!</span> you finished it in <b>${formatTime(clock.ms)}</b>`;
+  else clockEl.textContent = formatTime(clockMs());
 }
-// The "yay!" card at the moment of solving; it fades on its own after a while.
-const finishEl = document.getElementById('finish');
-let finishTimer = 0;
+// At the moment of solving, the timer's spot pops to say so.
 function celebrate() {
-  document.getElementById('finish-time').textContent = formatTime(clock.ms);
-  finishEl.hidden = false;
-  finishEl.style.animation = 'none';
-  void finishEl.offsetWidth; // restart the pop-in
-  finishEl.style.animation = '';
-  clearTimeout(finishTimer);
-  finishTimer = setTimeout(() => (finishEl.hidden = true), 4200);
+  clockEl.classList.remove('pop');
+  void clockEl.offsetWidth; // restart the animation
+  clockEl.classList.add('pop');
   wake();
 }
 setInterval(() => clock.since !== null && showClock(), 250);
@@ -154,8 +149,7 @@ function resetClock() {
   cardShot = null;
   grabFrame = null;
   shareBar.hidden = true;
-  finishEl.hidden = true;
-  clearTimeout(finishTimer);
+  clockEl.classList.remove('pop');
   showClock();
 } // performance.now() when the last piece went in
 const sparkles = createSparkles(scene);
